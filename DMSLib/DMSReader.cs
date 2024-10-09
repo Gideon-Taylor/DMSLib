@@ -33,20 +33,21 @@ namespace DMSLib
                         throw new FormatException(path + " appears to be an invalid DMS DAT file.");
                     }
 
-                    file.Version = firstLine.Split(new char[] {' '}, StringSplitOptions.RemoveEmptyEntries)[2];
+                    file.Version = firstLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[2];
 
                     /* Blank line - sometimes not present...*/
                     var nextLine = sr.ReadLine();
                     if (nextLine.Trim().Length == 0)
                     {
-                        file.BlankLine = sr.ReadLine();
+                        file.BlankLine = "";
                         file.Endian = sr.ReadLine().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[2];
-                    } else
+                    }
+                    else
                     {
                         file.BlankLine = "";
                         file.Endian = nextLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[2];
                     }
-                    file.BaseLanguage = sr.ReadLine().Split(new char[] {' '}, StringSplitOptions.RemoveEmptyEntries)[2];
+                    file.BaseLanguage = sr.ReadLine().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[2];
                     file.Database = sr.ReadLine().Replace("REM Database: ", "");
                     file.Started = sr.ReadLine().Replace("REM Started: ", "");
 
@@ -167,32 +168,27 @@ namespace DMSLib
 
                             currentLine = sr.ReadLine();
                         }
-                        if (sr.EndOfStream)
-                        {
-                            /* 
-                            break;
-                        }
                         currentLine = sr.ReadLine();
                     }
 
-                    /* Parse "Ended" */
-                    file.Ended = currentLine.Replace("REM Ended: ", "");
+                    sw.Stop();
+                    Console.WriteLine("Total Read Time: " + sw.Elapsed.TotalSeconds + " seconds.");
+                    Console.WriteLine("DAT File Size: " + new FileInfo(path).Length / 1024.0 / 1024.0 + "MB");
+                    Console.WriteLine("Memory Size Increase: " +
+                                      ((Process.GetCurrentProcess().PrivateMemorySize64 - memSizeBefore) / 1024.0) / 1024.0 +
+                                      "MB");
+                    var totalRows = file.Tables.Sum(t => t.Rows.Count);
+                    Console.WriteLine("Total Row Count: " + totalRows);
+
+                    /* Set the filename parameter */
+                    file.FileName = new FileInfo(path).Name;
+
+                    return file;
                 }
+            } else
+            {
+                throw new FileNotFoundException("File not found: " + path);
             }
-
-            sw.Stop();
-            Console.WriteLine("Total Read Time: " + sw.Elapsed.TotalSeconds + " seconds.");
-            Console.WriteLine("DAT File Size: " + new FileInfo(path).Length / 1024.0 / 1024.0 + "MB");
-            Console.WriteLine("Memory Size Increase: " +
-                              ((Process.GetCurrentProcess().PrivateMemorySize64 - memSizeBefore) / 1024.0) / 1024.0 +
-                              "MB");
-            var totalRows = file.Tables.Sum(t => t.Rows.Count);
-            Console.WriteLine("Total Row Count: " + totalRows);
-
-            /* Set the filename parameter */
-            file.FileName = new FileInfo(path).Name;
-
-            return file;
         }
     }
 }

@@ -11,7 +11,7 @@ namespace DMSLib
 {
     public class DMSRow
     {
-        public DMSCompareResult CompareResult = DMSCompareResult.NONE;
+        public CompareResult CompareResult = new CompareResult() { Status = DMSCompareStatus.NONE};
         public byte[] Values;
         public int[] Indexes;
         public DMSTable OwningTable;

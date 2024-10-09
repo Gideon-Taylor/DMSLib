@@ -174,7 +174,7 @@ namespace DMSLib
             {
                 if (saveOnlyDiffs)
                 {
-                    if (table.CompareResult == DMSCompareResult.NONE || table.CompareResult == DMSCompareResult.SAME)
+                    if (table.CompareResult.Status == DMSCompareStatus.NONE || table.CompareResult.Status == DMSCompareStatus.SAME)
                     {
                         /* skip */
                         continue;

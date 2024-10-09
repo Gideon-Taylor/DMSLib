@@ -7,7 +7,7 @@ namespace DMSLib
     public class DMSTable
     {
         public List<DMSColumn> Columns = new List<DMSColumn>();
-        public DMSCompareResult CompareResult = DMSCompareResult.NONE;
+        public CompareResult CompareResult = new CompareResult() { Status = DMSCompareStatus.NONE };
         public string DBName;
         public DMSRecordMetadata Metadata;
         public string Name;
@@ -74,7 +74,7 @@ namespace DMSLib
             {
                 if (saveOnlyDiffs)
                 {
-                    if (row.CompareResult == DMSCompareResult.NONE || row.CompareResult == DMSCompareResult.SAME)
+                    if (row.CompareResult.Status == DMSCompareStatus.NONE || row.CompareResult.Status == DMSCompareStatus.SAME)
                     {
                         /* skip this row */
                         continue;
