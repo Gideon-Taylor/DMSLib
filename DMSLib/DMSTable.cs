@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -13,12 +14,20 @@ namespace DMSLib
         public string Name;
         public List<DMSRow> Rows = new List<DMSRow>();
         public string WhereClause;
-
         public override string ToString()
         {
             return Name;
         }
 
+        public DMSColumn GetColumnByName(string columnName)
+        {
+            return Columns.FirstOrDefault(c => c.Name == columnName);
+        }
+
+        public string GetColumnName(int index)
+        {
+            return Columns[index].Name;
+        }
         public void AddColumn(DMSNewColumn newColumn, DMSColumn colBefore, string defaultValue)
         {
             /* Update DMSRecord metadata */
@@ -140,6 +149,7 @@ namespace DMSLib
                 row.DeleteValue(colIndex);
             }
         }
+
     }
 
     public class DMSNewColumn

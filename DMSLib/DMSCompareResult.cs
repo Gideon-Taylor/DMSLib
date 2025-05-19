@@ -9,12 +9,14 @@ namespace DMSLib
 {
     public enum DMSCompareStatus
     {
-        NEW, UPDATE, SAME, NONE, MISSING
+        NEW, UPDATE, SAME, NONE, MISSING, COLUMNS_CHANGED
     }
 
-    public struct CompareResult
+    public class CompareResult
     {
         public DMSCompareStatus Status;
-        public List<int> ChangedIndexes;
+        public List<int> ChangedIndexes = new List<int>();
+        public List<int> AddedIndexes = new List<int>();
+        public List<int> DeletedIndexes = new List<int>();
     }
 }

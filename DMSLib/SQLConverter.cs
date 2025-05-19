@@ -121,7 +121,7 @@ namespace DMSLib
 
             return queryConnection;
         }
-        public static async Task<SqliteConnection> DMSTableToSQLAsync(DMSTable table, IProgress<float> progress, CancellationToken cancellationToken)
+        public static async Task<SqliteConnection> DMSTableToSQLAsync(List<DMSTable> tables, IProgress<float> progress, CancellationToken cancellationToken)
         {
             SQLitePCL.Batteries_V2.Init();
             var queryConnection = new SqliteConnection("Data Source=:memory:");
@@ -134,76 +134,80 @@ namespace DMSLib
                     cancellationToken.ThrowIfCancellationRequested();
                     /* build the table */
                     var makeTable = queryConnection.CreateCommand();
-                    makeTable.CommandText = GetTableDDL(table);
+                    makeTable.CommandText = GetTableDDL(tables[0]);
                     makeTable.ExecuteNonQuery();
 
                     /* add all the rows */
 
                     var insertCmd = queryConnection.CreateCommand();
                     StringBuilder insertBuilder = new StringBuilder();
-                    insertBuilder.Append($"INSERT INTO {table.DBName}(");
-                    foreach (var field in table.Metadata.FieldMetadata)
+                    insertBuilder.Append($"INSERT INTO {tables[0].DBName}(");
+                    foreach (var field in tables[0].Metadata.FieldMetadata)
                     {
                         insertBuilder.Append($"{field.FieldName},");
                     }
                     insertBuilder.Append("__rowHash");
                     insertBuilder.Append(") VALUES(");
-                    for (var x = 1; x <= table.Columns.Count; x++)
+                    for (var x = 1; x <= tables[0].Columns.Count; x++)
                     {
                         insertBuilder.Append($"@{x},");
                     }
-                    insertBuilder.Append($"@{table.Columns.Count + 1}");
+                    insertBuilder.Append($"@{tables[0].Columns.Count + 1}");
                     insertBuilder.Append(");");
 
                     insertCmd.CommandText = insertBuilder.ToString();
                     long rowsAdded = 0;
-                    foreach (var row in table.Rows)
+
+                    foreach (var table in tables)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        if (insertCmd.Parameters.Count == 0)
+                        foreach (var row in table.Rows)
                         {
-                            for (var x = 1; x <= table.Columns.Count; x++)
+                            cancellationToken.ThrowIfCancellationRequested();
+                            if (insertCmd.Parameters.Count == 0)
                             {
-                                if (row.GetValue(x - 1) == null)
+                                for (var x = 1; x <= table.Columns.Count; x++)
                                 {
-                                    insertCmd.Parameters.AddWithValue($"@{x}", DBNull.Value);
+                                    if (row.GetValue(x - 1) == null)
+                                    {
+                                        insertCmd.Parameters.AddWithValue($"@{x}", DBNull.Value);
+                                    }
+                                    else
+                                    {
+                                        insertCmd.Parameters.AddWithValue($"@{x}", row.GetValue(x - 1));
+                                    }
                                 }
-                                else
-                                {
-                                    insertCmd.Parameters.AddWithValue($"@{x}", row.GetValue(x - 1));
-                                }
+
+                                insertCmd.Parameters.AddWithValue($"@{table.Columns.Count + 1}", row.RowHash);
+
                             }
-
-                            insertCmd.Parameters.AddWithValue($"@{table.Columns.Count + 1}", row.RowHash);
-
-                        }
-                        else
-                        {
-                            /* params exist, just update their values */
-                            for (var x = 0; x < insertCmd.Parameters.Count - 1; x++)
+                            else
                             {
-                                if (row.GetValue(x) == null)
+                                /* params exist, just update their values */
+                                for (var x = 0; x < insertCmd.Parameters.Count - 1; x++)
                                 {
-                                    insertCmd.Parameters[x].Value = DBNull.Value;
+                                    if (row.GetValue(x) == null)
+                                    {
+                                        insertCmd.Parameters[x].Value = DBNull.Value;
+                                    }
+                                    else
+                                    {
+                                        insertCmd.Parameters[x].Value = row.GetValue(x);
+                                    }
                                 }
-                                else
-                                {
-                                    insertCmd.Parameters[x].Value = row.GetValue(x);
-                                }
+                                insertCmd.Parameters[insertCmd.Parameters.Count - 1].Value = row.RowHash;
                             }
-                            insertCmd.Parameters[insertCmd.Parameters.Count - 1].Value = row.RowHash;
-                        }
-                        insertCmd.Prepare();
-                        try
-                        {
-                            insertCmd.ExecuteNonQuery();
-                        }
-                        catch (SqliteException ex)
-                        {
+                            insertCmd.Prepare();
+                            try
+                            {
+                                insertCmd.ExecuteNonQuery();
+                            }
+                            catch (SqliteException ex)
+                            {
 
+                            }
+                            rowsAdded += 1;
+                            progress?.Report((rowsAdded / (float)table.Rows.Count) * 100);
                         }
-                        rowsAdded += 1;
-                        progress?.Report((rowsAdded / (float)table.Rows.Count) * 100);
                     }
                 });
             }

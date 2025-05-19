@@ -20,6 +20,15 @@ namespace DMSLib
         public long DateHash;
         public long VersionHash;
         public long RowHash;
+
+        public int ColumnCount
+        {
+            get
+            {
+                return Indexes.Length - 1;
+            }
+        }
+
         public FieldTypes GetFieldType(int index)
         {
             if (OwningTable != null)
