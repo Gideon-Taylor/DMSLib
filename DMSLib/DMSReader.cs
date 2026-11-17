@@ -39,7 +39,7 @@ namespace DMSLib
                     var nextLine = sr.ReadLine();
                     if (nextLine.Trim().Length == 0)
                     {
-                        file.BlankLine = "";
+                        file.BlankLine = nextLine;
                         file.Endian = sr.ReadLine().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[2];
                     }
                     else
@@ -170,6 +170,9 @@ namespace DMSLib
                         }
                         currentLine = sr.ReadLine();
                     }
+
+                    if (currentLine != null && currentLine.StartsWith("REM Ended: "))
+                        file.Ended = currentLine.Substring("REM Ended: ".Length);
 
                     sw.Stop();
                     Console.WriteLine("Total Read Time: " + sw.Elapsed.TotalSeconds + " seconds.");

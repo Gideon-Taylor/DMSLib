@@ -53,39 +53,53 @@ namespace DMSLib
 
         public void InsertValueString(int index, string val)
         {
-            var currentValues = new List<string>(GetValuesAsString());
-            currentValues.Insert(index, val);
-            CollapseValues(currentValues);
+            var currentValues = GetRawValues();
+            currentValues.Insert(index, DecodeValueString(val));
+            SetRawValues(currentValues);
         }
 
         public void DeleteValue(int index)
         {
-            var currentValues = new List<string>(GetValuesAsString());
+            var currentValues = GetRawValues();
             currentValues.RemoveAt(index);
-            CollapseValues(currentValues);
+            SetRawValues(currentValues);
         }
         public void ChangeValue(int index, string val)
         {
-            var currentValues = new List<string>(GetValuesAsString());
-            currentValues[index] = val;
-            CollapseValues(currentValues);
+            var currentValues = GetRawValues();
+            currentValues[index] = DecodeValueString(val);
+            SetRawValues(currentValues);
         }
-        private void CollapseValues(List<string> vals)
+
+        /// <summary>Returns a copy, preserving binary data without a text conversion.</summary>
+        public byte[] GetValueBytes(int index)
+        {
+            var data = new byte[Indexes[index + 1] - Indexes[index]];
+            Array.Copy(Values, Indexes[index], data, 0, data.Length);
+            return data;
+        }
+
+        private List<byte[]> GetRawValues()
+        {
+            return Enumerable.Range(0, ColumnCount).Select(GetValueBytes).ToList();
+        }
+
+        // null is the DAT null sentinel, not an empty string or a literal space.
+        internal static byte[] DecodeValueString(string value)
+        {
+            if (value == null) return new byte[] { 0 };
+            if (value.StartsWith("B{", StringComparison.Ordinal) && value.EndsWith("}", StringComparison.Ordinal))
+                return HexStringToBytes(value.Substring(2, value.Length - 3));
+            return Encoding.UTF8.GetBytes(value);
+        }
+
+        private void SetRawValues(List<byte[]> vals)
         {
             var newIndexes = new List<int>();
             MemoryStream ms = new MemoryStream();
 
-            foreach(string val in vals)
+            foreach(byte[] valBytes in vals)
             {
-                byte[] valBytes;
-                /* Determine if a binary value by looking for B{...} */
-                if (val[0] == 'B' && val[1] == '{' && val[val.Length-1] == '}')
-                {
-                    valBytes = HexStringToBytes(val.Substring(2,val.Length-3));
-                }else
-                {
-                    valBytes = Encoding.UTF8.GetBytes(val);
-                }
                 newIndexes.Add((int)ms.Length);
                 ms.Write(valBytes, 0, valBytes.Length);
             }
@@ -108,30 +122,12 @@ namespace DMSLib
 
             byte[] bytes = new byte[s.Length / 2];
 
-            int state = 0; // 0 = expect first digit, 1 = expect second digit, 2 = expect hyphen
-            int currentByte = 0;
-            int x;
-            int value = 0;
-
-            foreach (char c in s)
+            for (int i = 0; i < s.Length; i += 2)
             {
-                switch (state)
-                {
-                    case 0:
-                        x = HEX_CHARS.IndexOf(Char.ToUpperInvariant(c));
-                        if (x == -1)
-                            throw new FormatException();
-                        value = x << 4;
-                        state = 1;
-                        break;
-                    case 1:
-                        x = HEX_CHARS.IndexOf(Char.ToUpperInvariant(c));
-                        if (x == -1)
-                            throw new FormatException();
-                        bytes[currentByte++] = (byte)(value + x);
-                        state = 2;
-                        break;
-                }
+                var high = HEX_CHARS.IndexOf(Char.ToUpperInvariant(s[i]));
+                var low = HEX_CHARS.IndexOf(Char.ToUpperInvariant(s[i + 1]));
+                if (high < 0 || low < 0) throw new FormatException("Invalid binary hexadecimal value.");
+                bytes[i / 2] = (byte)((high << 4) | low);
             }
 
             return bytes;
@@ -155,7 +151,7 @@ namespace DMSLib
                             .Select(t => OwningTable.Columns.IndexOf(OwningTable.Columns
                             .First(c => c.Name == t.FieldName)));
 
-            var valueFields = Enumerable.Range(0, OwningTable.Metadata.FieldCount - 1).Where(i => dateFields.Contains(i) == false && versionFields.Contains(i) == false);
+            var valueFields = Enumerable.Range(0, OwningTable.Metadata.FieldCount).Where(i => dateFields.Contains(i) == false && versionFields.Contains(i) == false);
 
             unchecked
             {
@@ -199,7 +195,7 @@ namespace DMSLib
             var data = new byte[end - start];
             Array.Copy(Values, start, data, 0, end - start);
             var utf8Enc = Encoding.UTF8.GetString(data);
-            if (Encoding.UTF8.GetBytes(utf8Enc).Length == data.Length)
+            if (Encoding.UTF8.GetBytes(utf8Enc).SequenceEqual(data))
             {
                 return utf8Enc;
             }
@@ -217,9 +213,10 @@ namespace DMSLib
                 case FieldTypes.LONG_CHAR:
                     return GetStringValue(index);
                 case FieldTypes.NUMBER:
-                    return Int64.Parse(GetStringValue(index));
                 case FieldTypes.SIGNED_NUMBER:
-                    return Int64.Parse(GetStringValue(index));
+                    if (OwningTable.Metadata.FieldMetadata[index].DecimalPositions > 0)
+                        return Decimal.Parse(GetStringValue(index), CultureInfo.InvariantCulture);
+                    return Int64.Parse(GetStringValue(index), CultureInfo.InvariantCulture);
                 case FieldTypes.DATE:
                     if (GetStringValue(index) == "\0")
                     {
