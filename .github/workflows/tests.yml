@@ -1,0 +1,12 @@
+name: DMSLib tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - uses: NuGet/setup-nuget@v2
+      - run: nuget restore DMSLib.sln -NonInteractive
+      - run: msbuild DMSLib.sln /p:Configuration=Release /p:UseSharedCompilation=false /v:minimal
+      - run: .\DMSLib.Tests\bin\Release\DMSLib.Tests.exe

@@ -1,0 +1,17 @@
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{ACFA68BE-B8E0-4232-8146-0E0889C52951}</ProjectGuid>
+    <OutputType>Exe</OutputType><RootNamespace>DMSLib_Tests</RootNamespace>
+    <AssemblyName>DMSLib.Tests</AssemblyName><TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <OutputPath>bin\$(Configuration)\</OutputPath><LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" /><Reference Include="System.Core" /><Reference Include="System.Web.Extensions" /><Reference Include="Microsoft.CSharp" />
+    <Compile Include="Program.cs" />
+    <ProjectReference Include="..\DMSLib\DMSLib.csproj"><Project>{F9247363-0F85-4A31-95EE-4743CFBC8CF4}</Project><Name>DMSLib</Name></ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
