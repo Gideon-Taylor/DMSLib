@@ -217,9 +217,8 @@ namespace DMSLib
                 case FieldTypes.LONG_CHAR:
                     return GetStringValue(index);
                 case FieldTypes.NUMBER:
-                    return Int64.Parse(GetStringValue(index));
                 case FieldTypes.SIGNED_NUMBER:
-                    return Int64.Parse(GetStringValue(index));
+                    return ParseNumber(index);
                 case FieldTypes.DATE:
                     if (GetStringValue(index) == "\0")
                     {
@@ -239,6 +238,7 @@ namespace DMSLib
                     }
                     return DateTime.ParseExact(GetStringValue(index), "HH.mm.ss.ffffff", CultureInfo.InvariantCulture);
                 case FieldTypes.IMG_OR_ATTACH:
+                case FieldTypes.IMAGE_REF:
                     var start = Indexes[index];
                     var end = Indexes[index + 1];
                     var data = new byte[end - start];
@@ -249,6 +249,25 @@ namespace DMSLib
                     return null;
             }
         }
+        /* Numbers with decimal positions (e.g. NUMBER(6,2)) hold values like "12.50", which
+         * Int64.Parse rejects. Whole numbers stay Int64 so existing callers see no change. */
+        private dynamic ParseNumber(int index)
+        {
+            var text = GetStringValue(index).Trim();
+            if (text.Length == 0)
+            {
+                return null;
+            }
+
+            var decimals = OwningTable?.Metadata.FieldMetadata[index].DecimalPositions ?? 0;
+            if (decimals == 0 && Int64.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long whole))
+            {
+                return whole;
+            }
+
+            return Decimal.Parse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+        }
+
         public string[] GetValuesAsString()
         {
             string[] values = new string[Indexes.Length - 1];
